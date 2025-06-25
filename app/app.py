@@ -37,6 +37,9 @@ transform = transforms.Compose([
     transforms.Normalize([0.485], [0.229])  # Grayscale normalization
 ])
 
+# Confidence threshold
+threshold = 0.6  # 60%
+
 # File uploader
 uploaded_file = st.file_uploader("📤 Upload a Chest X-ray Image", type=["jpg", "jpeg", "png"])
 if uploaded_file is not None:
@@ -47,28 +50,37 @@ if uploaded_file is not None:
 
     with torch.no_grad():
         output = model(input_tensor)
-        probabilities = torch.nn.functional.softmax(output, dim=1)
-        confidence = torch.max(probabilities).item()
-        pred_index = torch.argmax(probabilities).item()
+        probabilities = torch.nn.functional.softmax(output, dim=1).squeeze()
+        max_prob, pred_index = torch.max(probabilities, dim=0)
         classes = ["NORMAL", "PNEUMONIA"]
-        prediction = classes[pred_index]
 
+        if max_prob.item() < threshold:
+            prediction = "Uncertain"
+            est_type = "N/A"
+        else:
+            prediction = classes[pred_index.item()]
+            if prediction == "PNEUMONIA":
+                est_type = "Viral" if max_prob.item() < 0.9 else "Bacterial"
+            else:
+                est_type = "N/A"
+
+    # Show results
     st.subheader("🧪 Prediction Result")
     st.write(f"**Prediction:** `{prediction}`")
-    st.write(f"**Confidence Score:** `{confidence * 100:.2f}%`")
+    st.write(f"**Confidence Score:** `{max_prob.item() * 100:.2f}%`")
 
-    est_type = "N/A"
     if prediction == "PNEUMONIA":
-        est_type = "Viral" if confidence < 0.9 else "Bacterial"
         st.write(f"**Estimated Type:** `{est_type} Pneumonia`")
+    elif prediction == "Uncertain":
+        st.warning("⚠️ The model is not confident in its prediction. Please review the X-ray manually.")
 
-    st.markdown("🩻 *Grad-CAM visualization coming soon.*")
+    
 
-    # Download button
+    # Download result
     result_data = {
         "filename": uploaded_file.name,
         "prediction": prediction,
-        "confidence": round(confidence * 100, 2),
+        "confidence": round(max_prob.item() * 100, 2),
         "estimated_type": est_type
     }
     st.download_button(
@@ -78,7 +90,7 @@ if uploaded_file is not None:
         mime="application/json"
     )
 
-# Sidebar (info only)
+# Sidebar
 st.sidebar.markdown("---")
 st.sidebar.markdown("### ℹ️ Pneumonia Info")
 st.sidebar.info(
