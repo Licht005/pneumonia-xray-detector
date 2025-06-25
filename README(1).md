@@ -56,6 +56,8 @@ git clone https://github.com/licht005/pneumonia-xray-detector.git
 cd pneumonia-xray-detector
 ```
 
+
+
 ### 2. Create a Virtual Environment (Optional but Recommended)
 
 ```bash
@@ -122,6 +124,10 @@ Predictions are automatically logged in a local SQLite database (`database/predi
 - 📧 Email: lucaskpatah8@gmail.com
 
 ---
+##Visit the webpage
+```bash
+https://pneumonia-xray-detector-licht005.streamlit.app
+```
 
 ## 🛡️ Disclaimer
 
