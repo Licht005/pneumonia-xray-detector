@@ -74,7 +74,6 @@ if uploaded_file is not None:
     elif prediction == "Uncertain":
         st.warning("⚠️ The model is not confident in its prediction. Please review the X-ray manually.")
 
-    
 
     # Download result
     result_data = {
