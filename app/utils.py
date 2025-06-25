@@ -1,12 +1,11 @@
-
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 import os
 
-# Set up
+# ✅ Save DB inside writable 'app/' folder for Streamlit Cloud
 Base = declarative_base()
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "pneumonia_results.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "pneumonia_results.db")
 engine = create_engine(f"sqlite:///{DB_PATH}")
 Session = sessionmaker(bind=engine)
 
