@@ -4,30 +4,25 @@ import torchvision.transforms as transforms
 from PIL import Image
 import os
 import sys
+import json
 
 # Add src directory to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 from model import get_resnet18_model
-from utils import init_db, save_prediction, get_latest_predictions
 
 # Set up page
 st.set_page_config(page_title="Pneumonia Detector", layout="wide")
 st.title("🫁 Pneumonia Detection from Chest X-rays")
 st.markdown("Upload a chest X-ray to check for **NORMAL** or **PNEUMONIA**. The model may also estimate the likely type.")
 
-# Initialize DB
-init_db()
-
 # Load model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = get_resnet18_model()
-model_path = os.path.join("..", "data", "pneumonia_model.pth")
+model_path = "data/pneumonia_model.pth"
 
 try:
-    #model.load_state_dict(torch.load(model_path, map_location=device))
-    model.load_state_dict(torch.load("data/pneumonia_model.pth", map_location=device))
-
+    model.load_state_dict(torch.load(model_path, map_location=device))
 except FileNotFoundError:
     st.error(f"Model file not found at `{model_path}`.")
     st.stop()
@@ -69,16 +64,7 @@ if uploaded_file is not None:
 
     st.markdown("🩻 *Grad-CAM visualization coming soon.*")
 
-    # Save to database
-    save_prediction(
-        filename=uploaded_file.name,
-        prediction=prediction,
-        confidence=round(confidence * 100, 2),
-        est_type=est_type
-    )
-
     # Download button
-    import json
     result_data = {
         "filename": uploaded_file.name,
         "prediction": prediction,
@@ -92,22 +78,7 @@ if uploaded_file is not None:
         mime="application/json"
     )
 
-# Sidebar
-st.sidebar.header("📚 Prediction History")
-if st.sidebar.checkbox("Show Last 5 Predictions"):
-    latest = get_latest_predictions()
-    if latest:
-        for record in latest:
-            st.sidebar.markdown(f"""
-            **{record.timestamp}**
-            - 🖼️ File: `{record.filename}`
-            - 🧪 Prediction: `{record.prediction}`
-            - ✅ Confidence: `{record.confidence}%`
-            """)
-    else:
-        st.sidebar.write("No predictions logged yet.")
-
-# Extra info
+# Sidebar (info only)
 st.sidebar.markdown("---")
 st.sidebar.markdown("### ℹ️ Pneumonia Info")
 st.sidebar.info(
