@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyd
+
+# Virtual environments (if any)
+venv/
+env/
+.pytorch_env/
+*.env
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# OS/system files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Model checkpoints and serialized objects
+*.pth
+*.pkl
+
+# App-generated files
+data/history.json
+data/pneumonia_results.db
+database/predictions.db
+
+# IDE/editor folders
+.vscode/
+
