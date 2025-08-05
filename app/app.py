@@ -11,88 +11,186 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "s
 
 from model import get_resnet18_model
 
+# --- Configuration and Setup ---
+
 # Set up page
-st.set_page_config(page_title="Pneumonia Detector", layout="wide")
+st.set_page_config(page_title="Pneumonia Detector", layout="wide", page_icon="🫁")
 st.title("🫁 Pneumonia Detection from Chest X-rays")
-st.markdown("Upload a chest X-ray to check for **NORMAL** or **PNEUMONIA**. The model may also estimate the likely type.")
+st.markdown("Upload a chest X-ray image to check for **NORMAL** or **PNEUMONIA**.")
 
-# Load model
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = get_resnet18_model()
-model_path = "data/pneumonia_model.pth"
+# Constants
+MODEL_PATH = "../data/pneumonia_model.pth"
+CONFIDENCE_THRESHOLD = 0.6  # 60%
+PNEUMONIA_TYPE_THRESHOLD = 0.9 # 90%
+CLASSES = ["NORMAL", "PNEUMONIA"]
 
-try:
-    model.load_state_dict(torch.load(model_path, map_location=device))
-except FileNotFoundError:
-    st.error(f"Model file not found at `{model_path}`.")
-    st.stop()
+# --- Model Loading ---
 
-model.eval()
-model.to(device)
+@st.cache_resource
+def load_model():
+    """Loads the pre-trained ResNet-18 model and sets it to evaluation mode."""
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = get_resnet18_model()
+    try:
+        model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+        model.eval()
+        model.to(device)
+        return model, device
+    except FileNotFoundError:
+        st.error(f"Error: Model file not found at `{MODEL_PATH}`. Please ensure the path is correct.")
+        st.stop()
+    except Exception as e:
+        st.error(f"An unexpected error occurred while loading the model: {e}")
+        st.stop()
 
-# Transform for input
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485], [0.229])  # Grayscale normalization
-])
+# --- Image Processing ---
 
-# Confidence threshold
-threshold = 0.6  # 60%
+def get_image_transforms():
+    """Returns the image transformation pipeline."""
+    return transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485], [0.229])  # Grayscale normalization
+    ])
 
-# File uploader
-uploaded_file = st.file_uploader("📤 Upload a Chest X-ray Image", type=["jpg", "jpeg", "png"])
-if uploaded_file is not None:
-    image = Image.open(uploaded_file).convert("L")
-    st.image(image, caption="Uploaded Image", width=350)
+# --- Prediction Logic ---
 
+def make_prediction(image, model, device, transform):
+    """
+    Processes the image and makes a prediction using the loaded model.
+    Returns the prediction, confidence, and estimated type.
+    """
     input_tensor = transform(image).unsqueeze(0).to(device)
-
+    
     with torch.no_grad():
         output = model(input_tensor)
         probabilities = torch.nn.functional.softmax(output, dim=1).squeeze()
         max_prob, pred_index = torch.max(probabilities, dim=0)
-        classes = ["NORMAL", "PNEUMONIA"]
 
-        if max_prob.item() < threshold:
-            prediction = "Uncertain"
-            est_type = "N/A"
-        else:
-            prediction = classes[pred_index.item()]
-            if prediction == "PNEUMONIA":
-                est_type = "Viral" if max_prob.item() < 0.9 else "Bacterial"
-            else:
-                est_type = "N/A"
+    confidence = max_prob.item()
+    prediction = CLASSES[pred_index.item()]
+    
+    est_type = "N/A"
+    if confidence >= CONFIDENCE_THRESHOLD:
+        if prediction == "PNEUMONIA":
+            est_type = "Viral" if confidence < PNEUMONIA_TYPE_THRESHOLD else "Bacterial"
+    else:
+        prediction = "Uncertain"
+        
+    return prediction, confidence, est_type
 
-    # Show results
-    st.subheader("🧪 Prediction Result")
-    st.write(f"**Prediction:** `{prediction}`")
-    st.write(f"**Confidence Score:** `{max_prob.item() * 100:.2f}%`")
+# --- Main Application Logic ---
 
+def create_html_report(filename, prediction, confidence, est_type):
+    """Generates an HTML string for a nicely formatted prediction report."""
+    color = "green"
+    icon = "✅"
     if prediction == "PNEUMONIA":
-        st.write(f"**Estimated Type:** `{est_type} Pneumonia`")
+        color = "red"
+        icon = "⚠️"
     elif prediction == "Uncertain":
-        st.warning("⚠️ The model is not confident in its prediction. Please review the X-ray manually.")
+        color = "orange"
+        icon = "🧐"
 
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Pneumonia Detection Report</title>
+        <style>
+            body {{ font-family: sans-serif; margin: 40px; background-color: #f4f4f4; }}
+            .container {{ max-width: 600px; margin: auto; padding: 20px; background-color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }}
+            h1 {{ color: #333; text-align: center; }}
+            .result-box {{ border: 2px solid {color}; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; }}
+            .prediction {{ font-size: 24px; font-weight: bold; color: {color}; }}
+            .confidence {{ margin-top: 10px; font-size: 18px; color: #555; }}
+            .filename {{ font-style: italic; color: #777; }}
+            .footer {{ margin-top: 30px; font-size: 12px; color: #999; text-align: center; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Pneumonia Detection Report {icon}</h1>
+            <p class="filename">**File:** {filename}</p>
+            <div class="result-box">
+                <div class="prediction">Prediction: {prediction}</div>
+                <div class="confidence">Confidence Score: {confidence * 100:.2f}%</div>
+                {"<div class='confidence'>Estimated Type: " + est_type + " Pneumonia</div>" if prediction == "PNEUMONIA" else ""}
+            </div>
+            <div class="footer">
+                <p>Generated by the Pneumonia Detector Application.</p>
+                <p>This report is for informational purposes only. Consult a medical professional for diagnosis.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return html_content
 
-    # Download result
-    result_data = {
-        "filename": uploaded_file.name,
-        "prediction": prediction,
-        "confidence": round(max_prob.item() * 100, 2),
-        "estimated_type": est_type
-    }
+def display_results(uploaded_file, prediction, confidence, est_type):
+    """Displays the prediction results to the user."""
+    st.subheader("🧪 Prediction Result")
+    
+    if prediction == "PNEUMONIA":
+        st.success(f"**Prediction:** {prediction} (Likely {est_type}) ⚠️")
+        st.markdown("---")
+        st.info("Remember, this is a screening tool. Always consult a healthcare professional for a definitive diagnosis.")
+    elif prediction == "NORMAL":
+        st.success(f"**Prediction:** {prediction} ✅")
+        st.markdown("---")
+        st.info("The model found no signs of pneumonia. If symptoms persist, consult a doctor.")
+    else: # Uncertain
+        st.warning(f"**Prediction:** {prediction} 🧐")
+        st.markdown("---")
+        st.warning("⚠️ The model is not confident in its prediction. It is highly recommended to have the X-ray reviewed manually by a professional.")
+
+    st.write(f"**Confidence Score:** `{confidence * 100:.2f}%`")
+    
+    # Download result button
+    html_report = create_html_report(uploaded_file.name, prediction, confidence, est_type)
     st.download_button(
-        label="📥 Download Prediction Result",
-        data=json.dumps(result_data, indent=2),
-        file_name=f"{uploaded_file.name}_result.json",
-        mime="application/json"
+        label="📥 Download HTML Report",
+        data=html_report,
+        file_name=f"{uploaded_file.name}_report.html",
+        mime="text/html",
+    )
+    
+def main():
+    """Main function to run the Streamlit application."""
+    model, device = load_model()
+    transform = get_image_transforms()
+
+    # File uploader
+    uploaded_file = st.file_uploader(
+        "📤 Upload a Chest X-ray Image",
+        type=["jpg", "jpeg", "png"],
+        help="Please upload a high-quality chest X-ray image for analysis."
     )
 
-# Sidebar
-st.sidebar.markdown("---")
-st.sidebar.markdown("### ℹ️ Pneumonia Info")
-st.sidebar.info(
-    "Pneumonia is a lung infection that can be viral or bacterial. "
-    "X-ray screening is a supportive tool and should be followed by professional diagnosis."
-)
+    if uploaded_file:
+        try:
+            image = Image.open(uploaded_file).convert("L")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.image(image, caption="Uploaded Image", use_container_width=True)
+            
+            with col2:
+                with st.spinner("Analyzing image..."):
+                    prediction, confidence, est_type = make_prediction(image, model, device, transform)
+                
+                display_results(uploaded_file, prediction, confidence, est_type)
+
+        except Exception as e:
+            st.error(f"Failed to process the image. Please ensure it is a valid image file. Error: {e}")
+
+    # Sidebar
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### ℹ️ Important Information")
+    st.sidebar.info(
+        "**Pneumonia** is a serious lung infection. "
+        "This tool is intended as a supplementary screening aid and is **not a substitute for professional medical advice**. "
+        "A definitive diagnosis must be made by a qualified healthcare professional."
+    )
+
+if __name__ == "__main__":
+    main()
