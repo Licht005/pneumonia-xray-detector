@@ -18,8 +18,10 @@ st.set_page_config(page_title="Pneumonia Detector", layout="wide", page_icon="ü
 st.title("ü´Å Pneumonia Detection from Chest X-rays")
 st.markdown("Upload a chest X-ray image to check for **NORMAL** or **PNEUMONIA**.")
 
-# Constants
-MODEL_PATH = "../data/pneumonia_model.pth"
+# Constants (FIXED MODEL_PATH)
+current_dir = os.path.dirname(__file__)
+MODEL_PATH = os.path.join(current_dir, "..", "data", "pneumonia_model.pth")
+
 CONFIDENCE_THRESHOLD = 0.6  # 60%
 PNEUMONIA_TYPE_THRESHOLD = 0.9 # 90%
 CLASSES = ["NORMAL", "PNEUMONIA"]
