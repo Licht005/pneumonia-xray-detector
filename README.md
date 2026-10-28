@@ -7,16 +7,16 @@ A deep learning web application that detects pneumonia from chest X-ray images u
 
 ---
 
-## 🚀 Features
+## Features
 
-- 🔍 Upload chest X-ray images for instant classification
-- 🤖 Detects **NORMAL** and **PNEUMONIA**
-- 🦠 Differentiates between **Bacterial** and **Viral** pneumonia (based on confidence)
-- 📊 Displays confidence score
-- 📁 Download prediction results
-- 🕓 View recent prediction history
-- 🧠 Grad-CAM (Coming Soon)
-- 💾 SQLite database support for prediction logging
+-  Upload chest X-ray images for instant classification
+-  Detects **NORMAL** and **PNEUMONIA**
+-  Differentiates between **Bacterial** and **Viral** pneumonia (based on confidence)
+-  Displays confidence score
+-  Download prediction results
+-  View recent prediction history
+-  Grad-CAM (Coming Soon)
+-  SQLite database support for prediction logging
 
 ---
 
@@ -47,7 +47,7 @@ pneumonia-xray-detector/
 
 ---
 
-## 🖥️ Setup Instructions
+## Setup Instructions
 
 ### 1. Clone the Repo
 
@@ -80,7 +80,7 @@ streamlit run app/app.py
 
 ---
 
-## 🧠 Model Info
+## Model Info
 
 - Trained on grayscale chest X-ray images.
 - Custom ResNet18 architecture adapted for 1-channel inputs.
@@ -90,7 +90,7 @@ streamlit run app/app.py
 
 ---
 
-## 🗃️ Database
+## Database
 
 Predictions are automatically logged in a local SQLite database (`database/predictions.db`) with timestamps and metadata. Future versions can integrate cloud-based storage.
 
@@ -118,7 +118,7 @@ Predictions are automatically logged in a local SQLite database (`database/predi
 
 ---
 
-## 📩 Contact
+## Contact
 
 - 👤 GitHub: [licht005](https://github.com/licht005)
 - 📧 Email: lucaskpatah8@gmail.com
